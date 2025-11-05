@@ -1,0 +1,1295 @@
+{
+  "project": {
+    "name": "K-Means & KNN Sentence Classification System",
+    "description": "ML pipeline for sentence embedding classification with OpenAI and visualization",
+    "version": "1.0.0",
+    "tech_stack": ["Python", "uv", "OpenAI API", "scikit-learn", "matplotlib", "UMAP"],
+    "estimated_hours": 16
+  },
+  "phases": [
+    {
+      "phase_id": 1,
+      "phase_name": "Project Setup",
+      "description": "Initialize development environment with uv and project structure",
+      "estimated_hours": 0.5,
+      "tasks": [
+        {
+          "task_id": 1,
+          "title": "Initialize uv project",
+          "description": "Set up uv project with pyproject.toml configuration",
+          "priority": "critical",
+          "estimated_minutes": 15,
+          "dependencies": [],
+          "acceptance_criteria": [
+            "uv is installed and working",
+            "pyproject.toml created with project metadata",
+            "Virtual environment created",
+            "Can run 'uv run python --version' successfully"
+          ],
+          "commands": [
+            "curl -LsSf https://astral.sh/uv/install.sh | sh",
+            "uv init",
+            "uv python install 3.11",
+            "uv venv"
+          ],
+          "files_to_create": ["pyproject.toml"]
+        },
+        {
+          "task_id": 2,
+          "title": "Install dependencies with uv",
+          "description": "Add all required packages using uv",
+          "priority": "critical",
+          "estimated_minutes": 10,
+          "dependencies": [1],
+          "acceptance_criteria": [
+            "All packages installed successfully",
+            "uv.lock file generated",
+            "Can import openai, numpy, sklearn, matplotlib"
+          ],
+          "commands": [
+            "uv add openai>=1.12.0",
+            "uv add numpy>=1.24.0",
+            "uv add scikit-learn>=1.4.0",
+            "uv add matplotlib>=3.8.0",
+            "uv add python-dotenv>=1.0.0",
+            "uv add umap-learn>=0.5.5",
+            "uv add tqdm>=4.66.0",
+            "uv add --dev pytest>=7.4.0",
+            "uv add --dev black>=23.0.0",
+            "uv add --dev ruff>=0.1.0"
+          ],
+          "verification": "uv run python -c 'import openai; import numpy; import sklearn; print(\"All imports successful\")'"
+        },
+        {
+          "task_id": 3,
+          "title": "Create project folder structure",
+          "description": "Set up src/, tests/, and results/ directories",
+          "priority": "critical",
+          "estimated_minutes": 5,
+          "dependencies": [1],
+          "acceptance_criteria": [
+            "src/ folder exists with __init__.py",
+            "tests/ folder exists with __init__.py",
+            "results/ folder exists and is git-ignored"
+          ],
+          "folders_to_create": [
+            "src",
+            "tests",
+            "results"
+          ],
+          "files_to_create": [
+            "src/__init__.py",
+            "tests/__init__.py"
+          ]
+        },
+        {
+          "task_id": 4,
+          "title": "Create .env and .gitignore files",
+          "description": "Set up environment variables and git ignore rules",
+          "priority": "critical",
+          "estimated_minutes": 5,
+          "dependencies": [3],
+          "acceptance_criteria": [
+            ".env file created with OPENAI_API_KEY placeholder",
+            ".gitignore includes .env, results/, __pycache__, .venv/",
+            ".env is not tracked by git"
+          ],
+          "files_to_create": [".env", ".gitignore"],
+          "file_contents": {
+            ".env": "# OpenAI API Configuration\nOPENAI_API_KEY=your-openai-api-key-here\n\n# Optional: Model Configuration\nOPENAI_MODEL=text-embedding-3-small\nOPENAI_TIMEOUT=30",
+            ".gitignore": "# Python\n__pycache__/\n*.py[cod]\n*$py.class\n*.so\n.Python\n\n# Virtual Environment\n.venv/\nvenv/\nENV/\n\n# uv\n.uv/\nuv.lock\n\n# Environment Variables\n.env\n.env.local\n\n# Results\nresults/\n*.png\n*.npz\n\n# IDE\n.vscode/\n.idea/\n*.swp\n*.swo\n\n# Testing\n.pytest_cache/\n.coverage\nhtmlcov/\n\n# OS\n.DS_Store\nThumbs.db"
+          }
+        },
+        {
+          "task_id": 5,
+          "title": "Create README.md with setup instructions",
+          "description": "Write initial README with project overview and setup steps",
+          "priority": "high",
+          "estimated_minutes": 15,
+          "dependencies": [2, 3, 4],
+          "acceptance_criteria": [
+            "README.md exists with all sections",
+            "Installation instructions are clear",
+            "Usage examples provided"
+          ],
+          "files_to_create": ["README.md"],
+          "sections_to_include": [
+            "Project Title and Description",
+            "Features",
+            "Prerequisites",
+            "Installation",
+            "Configuration",
+            "Usage",
+            "Output",
+            "License"
+          ]
+        }
+      ]
+    },
+    {
+      "phase_id": 2,
+      "phase_name": "Core Infrastructure",
+      "description": "Build foundational modules for configuration and utilities",
+      "estimated_hours": 1,
+      "tasks": [
+        {
+          "task_id": 6,
+          "title": "Implement config.py",
+          "description": "Create configuration management system with environment variables",
+          "priority": "critical",
+          "estimated_minutes": 20,
+          "dependencies": [4],
+          "acceptance_criteria": [
+            "Can load OPENAI_API_KEY from .env",
+            "Default values set for all parameters",
+            "Configuration is accessible as singleton or dataclass"
+          ],
+          "files_to_create": ["src/config.py"],
+          "key_features": [
+            "Load from .env using python-dotenv",
+            "Default parameters (k=3, n_neighbors=5, etc.)",
+            "Color mapping dictionary",
+            "Category names list",
+            "Validation of required fields"
+          ],
+          "code_structure": {
+            "class": "Config",
+            "attributes": [
+              "openai_api_key",
+              "openai_model",
+              "sentences_per_category",
+              "kmeans_clusters",
+              "knn_neighbors",
+              "colors",
+              "categories",
+              "results_folder",
+              "random_state"
+            ]
+          }
+        },
+        {
+          "task_id": 7,
+          "title": "Create utils.py with helper functions",
+          "description": "Implement utility functions for normalization, validation, file operations",
+          "priority": "critical",
+          "estimated_minutes": 25,
+          "dependencies": [],
+          "acceptance_criteria": [
+            "normalize_vectors() works correctly",
+            "validate_normalization() detects unnormalized vectors",
+            "generate_timestamp() produces correct format",
+            "ensure_results_folder() creates directory if needed"
+          ],
+          "files_to_create": ["src/utils.py"],
+          "functions_to_implement": [
+            {
+              "name": "normalize_vectors",
+              "description": "L2 normalize vectors to unit length",
+              "parameters": ["vectors: np.ndarray"],
+              "returns": "np.ndarray",
+              "implementation_notes": "Use np.linalg.norm with axis=1"
+            },
+            {
+              "name": "validate_normalization",
+              "description": "Check if vectors are normalized (||v|| = 1)",
+              "parameters": ["vectors: np.ndarray", "tolerance: float = 1e-5"],
+              "returns": "bool",
+              "raises": "ValueError if not normalized"
+            },
+            {
+              "name": "generate_timestamp",
+              "description": "Generate timestamp string for filenames",
+              "parameters": [],
+              "returns": "str (format: YYYYMMDD_HHMMSS)"
+            },
+            {
+              "name": "ensure_results_folder",
+              "description": "Create results folder if it doesn't exist",
+              "parameters": ["folder_path: str"],
+              "returns": "None"
+            },
+            {
+              "name": "save_json",
+              "description": "Save data to JSON file with proper formatting",
+              "parameters": ["data: dict", "filepath: str"],
+              "returns": "None"
+            }
+          ]
+        },
+        {
+          "task_id": 8,
+          "title": "Set up logging system",
+          "description": "Configure logging to console and file",
+          "priority": "medium",
+          "estimated_minutes": 10,
+          "dependencies": [7],
+          "acceptance_criteria": [
+            "Logs output to console with colored formatting",
+            "Logs saved to results/run_log_*.txt",
+            "Different log levels work (DEBUG, INFO, WARNING, ERROR)"
+          ],
+          "implementation_location": "src/utils.py",
+          "function_to_add": "setup_logger",
+          "log_format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        },
+        {
+          "task_id": 9,
+          "title": "Create base test structure",
+          "description": "Set up pytest configuration and test fixtures",
+          "priority": "medium",
+          "estimated_minutes": 15,
+          "dependencies": [2],
+          "acceptance_criteria": [
+            "pytest.ini or pyproject.toml has test config",
+            "conftest.py has common fixtures",
+            "Can run 'uv run pytest' successfully"
+          ],
+          "files_to_create": ["tests/conftest.py"],
+          "fixtures_to_create": [
+            "sample_sentences",
+            "sample_vectors",
+            "mock_openai_client"
+          ]
+        }
+      ]
+    },
+    {
+      "phase_id": 3,
+      "phase_name": "Sentence Generation",
+      "description": "Generate categorized sentences for training and testing",
+      "estimated_hours": 1.5,
+      "tasks": [
+        {
+          "task_id": 10,
+          "title": "Implement SentenceGenerator class",
+          "description": "Create class to generate sentences across 3 categories",
+          "priority": "critical",
+          "estimated_minutes": 40,
+          "dependencies": [6],
+          "acceptance_criteria": [
+            "Can generate N sentences per category",
+            "Training and test sets are different",
+            "Sentences are grammatically correct",
+            "Each sentence is 5-20 words"
+          ],
+          "files_to_create": ["src/sentence_generator.py"],
+          "class_structure": {
+            "class_name": "SentenceGenerator",
+            "methods": [
+              {
+                "name": "__init__",
+                "parameters": ["config: Config"],
+                "description": "Initialize with configuration"
+              },
+              {
+                "name": "generate_training_set",
+                "parameters": ["n_per_category: int"],
+                "returns": "dict[str, list[str]]",
+                "description": "Generate training sentences"
+              },
+              {
+                "name": "generate_test_set",
+                "parameters": ["n_per_category: int"],
+                "returns": "dict[str, list[str]]",
+                "description": "Generate test sentences (different from training)"
+              },
+              {
+                "name": "_generate_animal_sentences",
+                "parameters": ["count: int"],
+                "returns": "list[str]",
+                "description": "Generate animal-related sentences"
+              },
+              {
+                "name": "_generate_music_sentences",
+                "parameters": ["count: int"],
+                "returns": "list[str]",
+                "description": "Generate music-related sentences"
+              },
+              {
+                "name": "_generate_food_sentences",
+                "parameters": ["count: int"],
+                "returns": "list[str]",
+                "description": "Generate food-related sentences"
+              }
+            ]
+          }
+        },
+        {
+          "task_id": 11,
+          "title": "Create sentence templates for each category",
+          "description": "Design diverse sentence templates to ensure variety",
+          "priority": "high",
+          "estimated_minutes": 30,
+          "dependencies": [10],
+          "acceptance_criteria": [
+            "At least 20 templates per category",
+            "Templates use varied vocabulary",
+            "Templates produce natural-sounding sentences"
+          ],
+          "implementation_approach": "Use lists of subjects, verbs, objects and combine randomly",
+          "example_templates": {
+            "animals": [
+              "The {animal} {verb} {adverb} in the {location}",
+              "{animal_plural} are known for their {adjective} {trait}",
+              "A {adjective} {animal} {verb} near the {location}"
+            ],
+            "music": [
+              "The {instrument} produced a {adjective} {sound}",
+              "{musician_type} often {verb} with great {emotion}",
+              "{genre} music features {adjective} rhythms"
+            ],
+            "food": [
+              "{food} tastes {adjective} when {preparation}",
+              "The chef {verb} the {ingredient} with {spice}",
+              "{adjective} {food} is a staple in {cuisine} cuisine"
+            ]
+          }
+        },
+        {
+          "task_id": 12,
+          "title": "Add validation for sentence quality",
+          "description": "Implement checks to ensure sentence quality and uniqueness",
+          "priority": "medium",
+          "estimated_minutes": 20,
+          "dependencies": [10, 11],
+          "acceptance_criteria": [
+            "No duplicate sentences within same set",
+            "All sentences meet length requirements (5-20 words)",
+            "Sentences pass basic grammar check"
+          ],
+          "validation_functions": [
+            "check_no_duplicates()",
+            "validate_sentence_length()",
+            "ensure_training_test_disjoint()"
+          ]
+        }
+      ]
+    },
+    {
+      "phase_id": 4,
+      "phase_name": "Vectorization Agent",
+      "description": "Implement OpenAI embedding integration with error handling",
+      "estimated_hours": 2,
+      "tasks": [
+        {
+          "task_id": 13,
+          "title": "Create VectorizationAgent class",
+          "description": "Build agent class for sentence-to-vector conversion",
+          "priority": "critical",
+          "estimated_minutes": 30,
+          "dependencies": [6, 7],
+          "acceptance_criteria": [
+            "Agent initializes with OpenAI client",
+            "Can convert single sentence to vector",
+            "Can batch process multiple sentences",
+            "Returns numpy arrays"
+          ],
+          "files_to_create": ["src/vectorization_agent.py"],
+          "class_structure": {
+            "class_name": "VectorizationAgent",
+            "attributes": [
+              "client: OpenAI",
+              "model: str",
+              "embedding_dim: int",
+              "logger: Logger"
+            ],
+            "methods": [
+              {
+                "name": "__init__",
+                "parameters": ["config: Config"],
+                "description": "Initialize OpenAI client"
+              },
+              {
+                "name": "vectorize",
+                "parameters": ["sentences: list[str]", "normalize: bool = True"],
+                "returns": "np.ndarray",
+                "description": "Convert sentences to vectors with optional normalization"
+              },
+              {
+                "name": "vectorize_batch",
+                "parameters": ["sentences: list[str]", "batch_size: int = 100"],
+                "returns": "np.ndarray",
+                "description": "Process large lists in batches"
+              }
+            ]
+          }
+        },
+        {
+          "task_id": 14,
+          "title": "Implement OpenAI API integration with error handling",
+          "description": "Add robust API calls with retry logic and error handling",
+          "priority": "critical",
+          "estimated_minutes": 40,
+          "dependencies": [13],
+          "acceptance_criteria": [
+            "Retries on API failures (max 3 attempts)",
+            "Exponential backoff between retries",
+            "Clear error messages for different failure types",
+            "Handles rate limiting gracefully"
+          ],
+          "error_types_to_handle": [
+            "openai.RateLimitError",
+            "openai.APIConnectionError",
+            "openai.AuthenticationError",
+            "openai.APIError"
+          ],
+          "retry_strategy": {
+            "max_attempts": 3,
+            "base_delay": 1,
+            "backoff_factor": 2,
+            "max_delay": 10
+          },
+          "code_example": "try:\n    response = self.client.embeddings.create(model=self.model, input=sentences)\nexcept openai.RateLimitError:\n    logger.warning('Rate limited, retrying...')\n    time.sleep(backoff_delay)\n    retry()"
+        },
+        {
+          "task_id": 15,
+          "title": "Add batch processing with progress bar",
+          "description": "Implement efficient batch processing with tqdm progress tracking",
+          "priority": "high",
+          "estimated_minutes": 25,
+          "dependencies": [13],
+          "acceptance_criteria": [
+            "Processes sentences in configurable batch sizes",
+            "Shows progress bar with tqdm",
+            "Displays estimated time remaining",
+            "Efficient memory usage"
+          ],
+          "batch_size": 100,
+          "progress_bar_format": "{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]"
+        },
+        {
+          "task_id": 16,
+          "title": "Implement vector normalization and validation",
+          "description": "Add L2 normalization and validation checks to vectorization",
+          "priority": "critical",
+          "estimated_minutes": 25,
+          "dependencies": [7, 14],
+          "acceptance_criteria": [
+            "All vectors are L2 normalized by default",
+            "Validation check confirms ||v|| = 1 for all vectors",
+            "Raises error if normalization fails",
+            "Option to skip normalization if needed"
+          ],
+          "normalization_check": "assert np.allclose(np.linalg.norm(vectors, axis=1), 1.0, atol=1e-5)",
+          "implementation_notes": "Call utils.normalize_vectors() and utils.validate_normalization()"
+        }
+      ]
+    },
+    {
+      "phase_id": 5,
+      "phase_name": "K-Means Clustering",
+      "description": "Implement unsupervised clustering with scikit-learn",
+      "estimated_hours": 1.5,
+      "tasks": [
+        {
+          "task_id": 17,
+          "title": "Create KMeansClustering class",
+          "description": "Build wrapper class for K-Means clustering",
+          "priority": "critical",
+          "estimated_minutes": 25,
+          "dependencies": [6],
+          "acceptance_criteria": [
+            "Class initializes with config parameters",
+            "Can fit on training vectors",
+            "Returns cluster labels",
+            "Stores cluster centers"
+          ],
+          "files_to_create": ["src/clustering.py"],
+          "class_structure": {
+            "class_name": "KMeansClustering",
+            "attributes": [
+              "n_clusters: int",
+              "kmeans: KMeans",
+              "cluster_centers: np.ndarray",
+              "labels: np.ndarray"
+            ],
+            "methods": [
+              {
+                "name": "__init__",
+                "parameters": ["config: Config"],
+                "description": "Initialize K-Means with parameters"
+              },
+              {
+                "name": "fit",
+                "parameters": ["vectors: np.ndarray"],
+                "returns": "np.ndarray (cluster labels)",
+                "description": "Fit K-Means and return cluster assignments"
+              },
+              {
+                "name": "get_cluster_centers",
+                "returns": "np.ndarray",
+                "description": "Return cluster centroids"
+              }
+            ]
+          }
+        },
+        {
+          "task_id": 18,
+          "title": "Implement clustering with scikit-learn",
+          "description": "Configure and run K-Means algorithm",
+          "priority": "critical",
+          "estimated_minutes": 20,
+          "dependencies": [17],
+          "acceptance_criteria": [
+            "K-Means runs with k=3",
+            "Uses k-means++ initialization",
+            "Random state set for reproducibility",
+            "Converges successfully"
+          ],
+          "kmeans_parameters": {
+            "n_clusters": 3,
+            "init": "k-means++",
+            "max_iter": 300,
+            "n_init": 10,
+            "random_state": 42,
+            "algorithm": "lloyd"
+          },
+          "code_example": "from sklearn.cluster import KMeans\nkmeans = KMeans(n_clusters=3, init='k-means++', max_iter=300, n_init=10, random_state=42)"
+        },
+        {
+          "task_id": 19,
+          "title": "Calculate cluster metrics",
+          "description": "Compute silhouette score, inertia, and other quality metrics",
+          "priority": "high",
+          "estimated_minutes": 25,
+          "dependencies": [18],
+          "acceptance_criteria": [
+            "Silhouette score calculated correctly",
+            "Inertia (WCSS) computed",
+            "Cluster sizes reported",
+            "Metrics stored in dictionary"
+          ],
+          "metrics_to_calculate": [
+            {
+              "name": "silhouette_score",
+              "function": "sklearn.metrics.silhouette_score",
+              "interpretation": "Range [-1, 1], higher is better"
+            },
+            {
+              "name": "inertia",
+              "source": "kmeans.inertia_",
+              "interpretation": "Sum of squared distances to centers, lower is better"
+            },
+            {
+              "name": "cluster_sizes",
+              "calculation": "np.bincount(labels)",
+              "interpretation": "Number of samples per cluster"
+            }
+          ]
+        },
+        {
+          "task_id": 20,
+          "title": "Generate confusion matrix vs true labels",
+          "description": "Compare cluster assignments to actual categories",
+          "priority": "medium",
+          "estimated_minutes": 20,
+          "dependencies": [18],
+          "acceptance_criteria": [
+            "Confusion matrix computed",
+            "Purity score calculated",
+            "Best cluster-to-category mapping found"
+          ],
+          "implementation_notes": "Use sklearn.metrics.confusion_matrix and scipy.optimize.linear_sum_assignment for optimal mapping"
+        }
+      ]
+    },
+    {
+      "phase_id": 6,
+      "phase_name": "KNN Classification",
+      "description": "Implement supervised classification with K-Nearest Neighbors",
+      "estimated_hours": 1.5,
+      "tasks": [
+        {
+          "task_id": 21,
+          "title": "Create KNNClassifier class",
+          "description": "Build wrapper class for KNN classification",
+          "priority": "critical",
+          "estimated_minutes": 25,
+          "dependencies": [6],
+          "acceptance_criteria": [
+            "Class initializes with config parameters",
+            "Can train on labeled data",
+            "Can predict on new data",
+            "Returns probabilities if requested"
+          ],
+          "files_to_create": ["src/classification.py"],
+          "class_structure": {
+            "class_name": "KNNClassifier",
+            "attributes": [
+              "n_neighbors: int",
+              "knn: KNeighborsClassifier",
+              "is_trained: bool"
+            ],
+            "methods": [
+              {
+                "name": "__init__",
+                "parameters": ["config: Config"],
+                "description": "Initialize KNN with parameters"
+              },
+              {
+                "name": "train",
+                "parameters": ["X_train: np.ndarray", "y_train: np.ndarray"],
+                "returns": "None",
+                "description": "Train KNN classifier"
+              },
+              {
+                "name": "predict",
+                "parameters": ["X_test: np.ndarray"],
+                "returns": "np.ndarray",
+                "description": "Predict class labels"
+              },
+              {
+                "name": "predict_proba",
+                "parameters": ["X_test: np.ndarray"],
+                "returns": "np.ndarray",
+                "description": "Predict class probabilities"
+              }
+            ]
+          }
+        },
+        {
+          "task_id": 22,
+          "title": "Train KNN on clustered data",
+          "description": "Configure and train KNN classifier",
+          "priority": "critical",
+          "estimated_minutes": 20,
+          "dependencies": [21],
+          "acceptance_criteria": [
+            "KNN trains on training vectors and labels",
+            "Uses distance-weighted voting",
+            "K=5 neighbors (configurable)",
+            "Training completes without errors"
+          ],
+          "knn_parameters": {
+            "n_neighbors": 5,
+            "weights": "distance",
+            "metric": "euclidean",
+            "algorithm": "auto",
+            "n_jobs": -1
+          },
+          "code_example": "from sklearn.neighbors import KNeighborsClassifier\nknn = KNeighborsClassifier(n_neighbors=5, weights='distance', metric='euclidean')"
+        },
+        {
+          "task_id": 23,
+          "title": "Predict on test data",
+          "description": "Apply trained KNN to test vectors",
+          "priority": "critical",
+          "estimated_minutes": 15,
+          "dependencies": [22],
+          "acceptance_criteria": [
+            "Predictions generated for all test samples",
+            "Confidence scores computed",
+            "Predictions are in correct format (0, 1, 2)"
+          ],
+          "output_format": {
+            "predictions": "np.ndarray of shape (n_samples,)",
+            "probabilities": "np.ndarray of shape (n_samples, n_classes)"
+          }
+        },
+        {
+          "task_id": 24,
+          "title": "Calculate classification metrics",
+          "description": "Compute accuracy, precision, recall, F1-score, confusion matrix",
+          "priority": "high",
+          "estimated_minutes": 30,
+          "dependencies": [23],
+          "acceptance_criteria": [
+            "Accuracy calculated",
+            "Per-class precision, recall, F1 computed",
+            "Confusion matrix generated",
+            "Classification report formatted"
+          ],
+          "metrics_to_calculate": [
+            {
+              "name": "accuracy",
+              "function": "sklearn.metrics.accuracy_score"
+            },
+            {
+              "name": "precision_recall_f1",
+              "function": "sklearn.metrics.classification_report",
+              "output_dict": true
+            },
+            {
+              "name": "confusion_matrix",
+              "function": "sklearn.metrics.confusion_matrix"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "phase_id": 7,
+      "phase_name": "Visualization",
+      "description": "Create publication-quality visualizations with metadata",
+      "estimated_hours": 2,
+      "tasks": [
+        {
+          "task_id": 25,
+          "title": "Implement dimensionality reduction with UMAP",
+          "description": "Reduce high-dimensional vectors to 2D for visualization",
+          "priority": "critical",
+          "estimated_minutes": 30,
+          "dependencies": [6],
+          "acceptance_criteria": [
+            "UMAP reduces vectors to 2D",
+            "Random state set for reproducibility",
+            "Works for both training and test data",
+            "Preserves relative distances"
+          ],
+          "files_to_create": ["src/visualization.py"],
+          "implementation": {
+            "library": "umap-learn",
+            "class": "UMAP",
+            "parameters": {
+              "n_components": 2,
+              "n_neighbors": 15,
+              "min_dist": 0.1,
+              "metric": "euclidean",
+              "random_state": 42
+            }
+          },
+          "code_example": "from umap import UMAP\numap_model = UMAP(n_components=2, n_neighbors=15, min_dist=0.1, random_state=42)\nvectors_2d = umap_model.fit_transform(vectors)"
+        },
+        {
+          "task_id": 26,
+          "title": "Create K-Means visualization with metadata",
+          "description": "Generate scatter plot for K-Means results with legend and metadata box",
+          "priority": "critical",
+          "estimated_minutes": 40,
+          "dependencies": [25],
+          "acceptance_criteria": [
+            "Scatter plot shows all points colored by original category",
+            "Cluster centers marked with X symbols",
+            "Legend shows category names, colors, and counts",
+            "Metadata box displays algorithm info, metrics, timestamp",
+            "Saved as PNG at 300 DPI"
+          ],
+          "visualization_requirements": {
+            "figure_size": [12, 8],
+            "dpi": 300,
+            "title": "K-Means Clustering Results (k=3)",
+            "point_size": 100,
+            "alpha": 0.7,
+            "colors": {
+              "animals": "#00FF00",
+              "music": "#0000FF",
+              "food": "#FF0000"
+            },
+            "metadata_to_include": [
+              "Algorithm: K-Means",
+              "Clusters: 3",
+              "Total Samples: {n}",
+              "Silhouette Score: {score:.3f}",
+              "Inertia: {inertia:.2f}",
+              "Date: {timestamp}"
+            ]
+          }
+        },
+        {
+          "task_id": 27,
+          "title": "Create KNN visualization with metadata",
+          "description": "Generate scatter plot for KNN classification results",
+          "priority": "critical",
+          "estimated_minutes": 40,
+          "dependencies": [25],
+          "acceptance_criteria": [
+            "Scatter plot shows test points colored by true category",
+            "Misclassified points highlighted (optional)",
+            "Legend shows accuracy per category",
+            "Metadata box displays KNN info, overall accuracy, timestamp",
+            "Saved as PNG at 300 DPI"
+          ],
+          "visualization_requirements": {
+            "figure_size": [12, 8],
+            "dpi": 300,
+            "title": "KNN Classification Results (k=5)",
+            "point_size": 100,
+            "alpha": 0.7,
+            "metadata_to_include": [
+              "Algorithm: K-Nearest Neighbors",
+              "K Value: 5",
+              "Training Samples: {n_train}",
+              "Test Samples: {n_test}",
+              "Overall Accuracy: {accuracy:.2%}",
+              "Date: {timestamp}"
+            ]
+          },
+          "optional_enhancement": "Use different marker edge colors for misclassified points"
+        },
+        {
+          "task_id": 28,
+          "title": "Add legends and color mapping",
+          "description": "Create comprehensive legends with category info",
+          "priority": "high",
+          "estimated_minutes": 20,
+          "dependencies": [26, 27],
+          "acceptance_criteria": [
+            "Legend shows all 3 categories",
+            "Colors match specification (green/blue/red)",
+            "Sample counts displayed",
+            "Legend positioned optimally (best location)"
+          ],
+          "legend_format": {
+            "kmeans": "Animals (Green) - {count} samples\nMusic (Blue) - {count} samples\nFood (Red) - {count} samples",
+            "knn": "Animals (Green) - {count} samples, Acc: {acc:.1%}\nMusic (Blue) - {count} samples, Acc: {acc:.1%}\nFood (Red) - {count} samples, Acc: {acc:.1%}"
+          }
+        },
+        {
+          "task_id": 29,
+          "title": "Save visualizations to results folder",
+          "description": "Implement file saving with proper naming and format",
+          "priority": "high",
+          "estimated_minutes": 10,
+          "dependencies": [26, 27, 28],
+          "acceptance_criteria": [
+            "Files saved with timestamp in filename",
+            "PNG format at 300 DPI",
+            "Files saved to results/ folder",
+            "Filenames follow pattern: {algorithm}_{timestamp}.png"
+          ],
+          "filename_patterns": {
+            "kmeans": "results/kmeans_clustering_{timestamp}.png",
+            "knn": "results/knn_classification_{timestamp}.png"
+          }
+        }
+      ]
+    },
+    {
+      "phase_id": 8,
+      "phase_name": "Main Pipeline Integration",
+      "description": "Connect all components into cohesive pipeline with CLI",
+      "estimated_hours": 2,
+      "tasks": [
+        {
+          "task_id": 30,
+          "title": "Implement main.py orchestration",
+          "description": "Create main pipeline that connects all modules",
+          "priority": "critical",
+          "estimated_minutes": 50,
+          "dependencies": [10, 13, 17, 21, 25],
+          "acceptance_criteria": [
+            "Pipeline runs end-to-end without errors",
+            "All steps execute in correct order",
+            "Progress logged at each stage",
+            "Results saved automatically"
+          ],
+          "files_to_create": ["src/main.py"],
+          "pipeline_steps": [
+            "1. Load configuration",
+            "2. Initialize logger",
+            "3. Generate training sentences",
+            "4. Generate test sentences",
+            "5. Vectorize training sentences",
+            "6. Vectorize test sentences",
+            "7. Validate normalization",
+            "8. Run K-Means clustering",
+            "9. Visualize K-Means results",
+            "10. Train KNN classifier",
+            "11. Predict test data",
+            "12. Visualize KNN results",
+            "13. Save metrics",
+            "14. Print summary"
+          ]
+        },
+        {
+          "task_id": 31,
+          "title": "Add command-line argument parsing",
+          "description": "Implement argparse for user input and configuration",
+          "priority": "high",
+          "estimated_minutes": 30,
+          "dependencies": [30],
+          "acceptance_criteria": [
+            "User can specify sentences per category",
+            "Optional arguments for k-neighbors, reduction method",
+            "Help message displays all options",
+            "Defaults are sensible"
+          ],
+          "cli_arguments": [
+            {
+              "name": "--sentences",
+              "short": "-s",
+              "type": "int",
+              "default": 10,
+              "help": "Number of sentences per category"
+            },
+            {
+              "name": "--k-neighbors",
+              "short": "-k",
+              "type": "int",
+              "default": 5,
+              "help": "Number of neighbors for KNN"
+            },
+            {
+              "name": "--reduction",
+              "short": "-r",
+              "choices": ["umap", "tsne", "pca"],
+              "default": "umap",
+              "help": "Dimensionality reduction method"
+            },
+            {
+              "name": "--verbose",
+              "short": "-v",
+              "action": "store_true",
+              "help": "Enable verbose logging"
+            }
+          ],
+          "usage_example": "uv run python src/main.py --sentences 15 --k-neighbors 7 --verbose"
+        },
+        {
+          "task_id": 32,
+          "title": "Integrate all modules into pipeline",
+          "description": "Wire up all classes and ensure data flows correctly",
+          "priority": "critical",
+          "estimated_minutes": 30,
+          "dependencies": [30, 31],
+          "acceptance_criteria": [
+            "All imports work correctly",
+            "Data passes between modules correctly",
+            "Error handling at module boundaries",
+            "Memory efficient (cleanup intermediate objects)"
+          ],
+          "integration_points": [
+            "Config → All modules",
+            "SentenceGenerator → VectorizationAgent",
+            "VectorizationAgent → KMeansClustering",
+            "VectorizationAgent → KNNClassifier",
+            "KMeansClustering → Visualization",
+            "KNNClassifier → Visualization"
+          ]
+        },
+        {
+          "task_id": 33,
+          "title": "Implement results storage system",
+          "description": "Save all outputs (data, metrics, logs) to results/ folder",
+          "priority": "high",
+          "estimated_minutes": 30,
+          "dependencies": [32],
+          "acceptance_criteria": [
+            "Training data saved as JSON",
+            "Test data saved as JSON",
+            "Vectors saved as NPZ file",
+            "Metrics saved as JSON",
+            "Log file created",
+            "All files timestamped consistently"
+          ],
+          "files_to_save": [
+            {
+              "name": "training_data_{timestamp}.json",
+              "content": "{'animals': [...], 'music': [...], 'food': [...]}"
+            },
+            {
+              "name": "test_data_{timestamp}.json",
+              "content": "{'animals': [...], 'music': [...], 'food': [...]}"
+            },
+            {
+              "name": "vectors_{timestamp}.npz",
+              "content": "{'training_vectors': ..., 'test_vectors': ..., 'training_labels': ..., 'test_labels': ...}"
+            },
+            {
+              "name": "metrics_{timestamp}.json",
+              "content": "{'kmeans': {...}, 'knn': {...}}"
+            },
+            {
+              "name": "run_log_{timestamp}.txt",
+              "content": "Full execution log"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "phase_id": 9,
+      "phase_name": "Testing & Validation",
+      "description": "Write comprehensive tests and validation checks",
+      "estimated_hours": 2,
+      "tasks": [
+        {
+          "task_id": 34,
+          "title": "Write unit tests for sentence generation",
+          "description": "Test SentenceGenerator class thoroughly",
+          "priority": "medium",
+          "estimated_minutes": 30,
+          "dependencies": [10],
+          "acceptance_criteria": [
+            "Tests pass for all generation methods",
+            "Tests verify no duplicates",
+            "Tests check sentence length",
+            "Tests ensure disjoint training/test sets"
+          ],
+          "files_to_create": ["tests/test_sentence_generator.py"],
+          "test_cases": [
+            "test_generate_training_set_correct_count",
+            "test_generate_test_set_correct_count",
+            "test_no_duplicates_within_set",
+            "test_training_test_disjoint",
+            "test_sentence_length_valid",
+            "test_all_categories_present"
+          ]
+        },
+        {
+          "task_id": 35,
+          "title": "Write unit tests for vectorization (mock OpenAI)",
+          "description": "Test VectorizationAgent with mocked API responses",
+          "priority": "medium",
+          "estimated_minutes": 35,
+          "dependencies": [13],
+          "acceptance_criteria": [
+            "Tests use mocked OpenAI client",
+            "Tests verify normalization",
+            "Tests check batch processing",
+            "Tests validate error handling"
+          ],
+          "files_to_create": ["tests/test_vectorization.py"],
+          "test_cases": [
+            "test_vectorize_single_sentence",
+            "test_vectorize_batch",
+            "test_vectors_normalized",
+            "test_retry_on_api_error",
+            "test_batch_size_handling"
+          ],
+          "mocking_strategy": "Use pytest-mock or unittest.mock to mock openai.OpenAI"
+        },
+        {
+          "task_id": 36,
+          "title": "Write unit tests for clustering and KNN",
+          "description": "Test KMeansClustering and KNNClassifier classes",
+          "priority": "medium",
+          "estimated_minutes": 30,
+          "dependencies": [17, 21],
+          "acceptance_criteria": [
+            "Tests verify clustering produces correct number of clusters",
+            "Tests check KNN predictions are valid",
+            "Tests validate metrics calculation",
+            "Tests use sample data fixtures"
+          ],
+          "files_to_create": ["tests/test_clustering.py", "tests/test_classification.py"],
+          "test_cases": {
+            "clustering": [
+              "test_kmeans_fit",
+              "test_correct_number_of_clusters",
+              "test_cluster_centers_shape",
+              "test_silhouette_score_calculation"
+            ],
+            "classification": [
+              "test_knn_train",
+              "test_knn_predict",
+              "test_predict_proba",
+              "test_accuracy_calculation"
+            ]
+          }
+        },
+        {
+          "task_id": 37,
+          "title": "Write integration test for full pipeline",
+          "description": "Test complete pipeline from start to finish",
+          "priority": "high",
+          "estimated_minutes": 35,
+          "dependencies": [32],
+          "acceptance_criteria": [
+            "Integration test runs full pipeline",
+            "Test uses small dataset (5 sentences per category)",
+            "Test verifies all output files created",
+            "Test validates metrics are reasonable"
+          ],
+          "files_to_create": ["tests/test_integration.py"],
+          "test_steps": [
+            "Run pipeline with minimal parameters",
+            "Check results/ folder has all expected files",
+            "Validate PNG files exist and are valid images",
+            "Verify JSON files are valid",
+            "Check NPZ file contains correct arrays"
+          ]
+        },
+        {
+          "task_id": 38,
+          "title": "Add validation checks for normalization",
+          "description": "Comprehensive tests for vector normalization",
+          "priority": "high",
+          "estimated_minutes": 20,
+          "dependencies": [7],
+          "acceptance_criteria": [
+            "Tests verify L2 norm equals 1",
+            "Tests check normalization function correctness",
+            "Tests validate validation function catches unnormalized vectors"
+          ],
+          "files_to_create": ["tests/test_utils.py"],
+          "test_cases": [
+            "test_normalize_vectors",
+            "test_validate_normalization_success",
+            "test_validate_normalization_failure",
+            "test_normalization_preserves_direction"
+          ]
+        }
+      ]
+    },
+    {
+      "phase_id": 10,
+      "phase_name": "Documentation & Polish",
+      "description": "Finalize documentation and polish codebase",
+      "estimated_hours": 1.5,
+      "tasks": [
+        {
+          "task_id": 39,
+          "title": "Write comprehensive README.md",
+          "description": "Create detailed README with all necessary information",
+          "priority": "high",
+          "estimated_minutes": 40,
+          "dependencies": [31, 32],
+          "acceptance_criteria": [
+            "README covers all sections",
+            "Installation steps are clear and tested",
+            "Usage examples work",
+            "Troubleshooting section helps common issues"
+          ],
+          "readme_sections": [
+            "# Project Title",
+            "## Overview",
+            "## Features",
+            "## Prerequisites",
+            "## Installation",
+            "## Configuration",
+            "## Usage",
+            "## Output Files",
+            "## Examples",
+            "## Architecture",
+            "## Troubleshooting",
+            "## Contributing",
+            "## License"
+          ]
+        },
+        {
+          "task_id": 40,
+          "title": "Add docstrings to all functions",
+          "description": "Write comprehensive docstrings following Google style",
+          "priority": "medium",
+          "estimated_minutes": 30,
+          "dependencies": [32],
+          "acceptance_criteria": [
+            "All public functions have docstrings",
+            "All classes have docstrings",
+            "Docstrings follow Google style",
+            "Parameters and return values documented"
+          ],
+          "docstring_format": "Google Style (Args, Returns, Raises, Examples)",
+          "tools_to_use": ["pydocstyle (optional)", "pylint"]
+        },
+        {
+          "task_id": 41,
+          "title": "Create example runs with different parameters",
+          "description": "Generate example outputs with various configurations",
+          "priority": "low",
+          "estimated_minutes": 20,
+          "dependencies": [32],
+          "acceptance_criteria": [
+            "Example run with 10 sentences per category",
+            "Example run with 20 sentences per category",
+            "Example with different k values",
+            "Screenshots or output samples saved"
+          ],
+          "example_commands": [
+            "uv run python src/main.py --sentences 10",
+            "uv run python src/main.py --sentences 20 --k-neighbors 7",
+            "uv run python src/main.py --sentences 15 --reduction tsne"
+          ]
+        },
+        {
+          "task_id": 42,
+          "title": "Final code review and cleanup",
+          "description": "Review all code, remove debug statements, format consistently",
+          "priority": "medium",
+          "estimated_minutes": 30,
+          "dependencies": [40],
+          "acceptance_criteria": [
+            "No debug print statements",
+            "Code formatted with black",
+            "Linting passes (ruff)",
+            "No unused imports",
+            "Type hints added where appropriate"
+          ],
+          "cleanup_commands": [
+            "uv run black src/ tests/",
+            "uv run ruff check src/ tests/ --fix",
+            "uv run mypy src/ --ignore-missing-imports"
+          ]
+        }
+      ]
+    }
+  ],
+  "dependencies_graph": {
+    "description": "Critical path and parallel task opportunities",
+    "critical_path": [1, 2, 3, 6, 10, 13, 14, 17, 21, 25, 30, 32],
+    "parallel_opportunities": [
+      {
+        "group": "After config setup",
+        "tasks": [7, 9]
+      },
+      {
+        "group": "After sentence generator",
+        "tasks": [11, 12]
+      },
+      {
+        "group": "After vectorization",
+        "tasks": [15, 16]
+      },
+      {
+        "group": "Visualization components",
+        "tasks": [26, 27]
+      },
+      {
+        "group": "Testing phase",
+        "tasks": [34, 35, 36, 38]
+      }
+    ]
+  },
+  "milestones": [
+    {
+      "milestone": "M1: Environment Ready",
+      "tasks_required": [1, 2, 3, 4, 5],
+      "deliverable": "Working uv environment with all dependencies"
+    },
+    {
+      "milestone": "M2: Core Infrastructure Complete",
+      "tasks_required": [6, 7, 8, 9],
+      "deliverable": "Config, utils, and logging functional"
+    },
+    {
+      "milestone": "M3: Data Generation Working",
+      "tasks_required": [10, 11, 12],
+      "deliverable": "Can generate training and test sentences"
+    },
+    {
+      "milestone": "M4: Vectorization Functional",
+      "tasks_required": [13, 14, 15, 16],
+      "deliverable": "OpenAI embeddings working with normalization"
+    },
+    {
+      "milestone": "M5: ML Algorithms Implemented",
+      "tasks_required": [17, 18, 19, 20, 21, 22, 23, 24],
+      "deliverable": "K-Means and KNN working with metrics"
+    },
+    {
+      "milestone": "M6: Visualization Complete",
+      "tasks_required": [25, 26, 27, 28, 29],
+      "deliverable": "Publication-quality visualizations generated"
+    },
+    {
+      "milestone": "M7: Pipeline Integrated",
+      "tasks_required": [30, 31, 32, 33],
+      "deliverable": "End-to-end pipeline functional"
+    },
+    {
+      "milestone": "M8: Tested and Documented",
+      "tasks_required": [34, 35, 36, 37, 38, 39, 40, 41, 42],
+      "deliverable": "Production-ready codebase"
+    }
+  ],
+  "quick_start_checklist": [
+    "☐ Install uv: curl -LsSf https://astral.sh/uv/install.sh | sh",
+    "☐ Clone/navigate to project directory",
+    "☐ Run: uv init",
+    "☐ Run: uv add openai numpy scikit-learn matplotlib python-dotenv umap-learn tqdm",
+    "☐ Create .env file with: OPENAI_API_KEY=your-key-here",
+    "☐ Create src/, tests/, results/ folders",
+    "☐ Start implementing Phase 1 tasks"
+  ]
+}
