@@ -416,7 +416,7 @@ Below are actual results from running the pipeline with 50 sentences per categor
 
 #### K-Means Clustering: Before & After
 
-![K-Means Before After](results/50/kmeans_before_after_20251104_222411.png)
+![K-Means Before After](docs/images/kmeans_before_after_20251104_222411.png)
 
 **K-Means Before/After Comparison:**
 
@@ -452,7 +452,7 @@ This side-by-side visualization shows:
 
 #### K-Means Clustering Result (Detailed View)
 
-![K-Means Clustering](results/50/kmeans_clustering_20251104_222411.png)
+![K-Means Clustering](docs/images/kmeans_clustering_20251104_222411.png)
 
 **What you'll see in the K-Means graph:**
 
@@ -494,7 +494,7 @@ Date: 2025-11-04 14:30
 
 #### KNN Classification: Before & After
 
-![KNN Before After](results/50/knn_before_after_20251104_222411.png)
+![KNN Before After](docs/images/knn_before_after_20251104_222411.png)
 
 **KNN Before/After Comparison:**
 
@@ -540,7 +540,7 @@ Actual Animal    50     0     0
 
 #### KNN Classification Result (Detailed View)
 
-![KNN Classification](results/50/knn_classification_20251104_222411.png)
+![KNN Classification](docs/images/knn_classification_20251104_222411.png)
 
 **What you'll see in the KNN graph:**
 

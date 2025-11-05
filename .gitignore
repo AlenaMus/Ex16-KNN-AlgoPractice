@@ -38,9 +38,12 @@ uv.lock
 # Results and outputs
 results/
 demo_test_results/
-*.png
 *.npz
 *.log
+
+# Allow PNG images in docs folder for documentation
+*.png
+!docs/**/*.png
 
 # IDE
 .vscode/
